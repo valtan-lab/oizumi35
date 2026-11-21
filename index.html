@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>同窓会 名簿登録</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --main: #1f6f5c;
+    --main-light: #e8f3ef;
+    --text: #222;
+    --sub: #666;
+    --line: #ddd;
+    --err: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    color: var(--text);
+    background: #f6f7f6;
+    line-height: 1.6;
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; color: var(--main); }
+  .lead { font-size: .9rem; color: var(--sub); margin: 0 0 20px; }
+  .card {
+    background: #fff; border-radius: 12px; padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 16px;
+  }
+  .me { display: flex; align-items: center; gap: 12px; }
+  .me img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: #eee; }
+  .me .label { font-size: .75rem; color: var(--sub); }
+  .me .name { font-size: 1.05rem; font-weight: 600; word-break: break-all; }
+  .notice { font-size: .85rem; background: var(--main-light); border-radius: 8px; padding: 10px 12px; margin-top: 12px; }
+  label { display: block; font-weight: 600; font-size: .95rem; margin: 16px 0 6px; }
+  label:first-child { margin-top: 0; }
+  .req, .opt { font-size: .7rem; font-weight: 600; padding: 1px 6px; border-radius: 4px; margin-left: 6px; vertical-align: 2px; }
+  .req { background: var(--main); color: #fff; }
+  .opt { background: #eee; color: var(--sub); }
+  .hint { font-size: .8rem; color: var(--sub); margin: -2px 0 6px; font-weight: normal; }
+  input[type=text], textarea {
+    width: 100%; font-size: 16px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--main); border-color: transparent; }
+  textarea { min-height: 80px; resize: vertical; }
+  .agree { display: flex; gap: 8px; align-items: flex-start; font-weight: normal; font-size: .9rem; }
+  .agree input { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; }
+  button {
+    width: 100%; font-size: 1rem; font-weight: 600; padding: 14px;
+    border: none; border-radius: 10px; background: var(--main); color: #fff; margin-top: 8px;
+  }
+  button:disabled { opacity: .5; }
+  .error { color: var(--err); font-size: .9rem; margin-top: 10px; white-space: pre-wrap; }
+  .center { text-align: center; }
+  .done h2 { color: var(--main); font-size: 1.2rem; margin: 8px 0; }
+  .spinner {
+    width: 32px; height: 32px; margin: 24px auto; border-radius: 50%;
+    border: 3px solid var(--main-light); border-top-color: var(--main);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>同窓会 名簿登録</h1>
+  <p class="lead">LINEグループのメンバーが誰か分かるように、本名の登録をお願いします。1分ほどで終わります。</p>
+
+  <!-- 読み込み中 -->
+  <section id="loading" class="card center">
+    <div class="spinner"></div>
+    <div id="loadingText">読み込み中…</div>
+  </section>
+
+  <!-- エラー -->
+  <section id="fatal" class="card hidden">
+    <p class="error" id="fatalText"></p>
+    <button type="button" onclick="location.reload()">もう一度読み込む</button>
+  </section>
+
+  <!-- フォーム -->
+  <form id="form" class="hidden" novalidate>
+    <section class="card">
+      <div class="me">
+        <img id="myIcon" alt="">
+        <div>
+          <div class="label">あなたのLINE</div>
+          <div class="name" id="myName"></div>
+        </div>
+      </div>
+      <div class="notice" id="statusNotice">このLINEアカウントと、下に入力する本名をセットで登録します。</div>
+    </section>
+
+    <section class="card">
+      <label for="realName">お名前（現在の氏名）<span class="req">必須</span></label>
+      <input type="text" id="realName" name="realName" autocomplete="name" placeholder="例：山田 花子">
+
+      <label for="kana">ふりがな<span class="req">必須</span></label>
+      <input type="text" id="kana" name="kana" placeholder="例：やまだ はなこ">
+
+      <label for="oldName">旧姓<span class="opt">任意</span></label>
+      <p class="hint">在学中と姓が変わった方は、在学中の姓を入力してください</p>
+      <input type="text" id="oldName" name="oldName" placeholder="例：佐藤">
+
+      <label for="classRoom">卒業時のクラス<span class="opt">任意</span></label>
+      <input type="text" id="classRoom" name="classRoom" placeholder="例：3年2組">
+
+      <label for="message">ひとこと<span class="opt">任意</span></label>
+      <textarea id="message" name="message" placeholder="近況や幹事への連絡など"></textarea>
+    </section>
+
+    <section class="card">
+      <label class="agree">
+        <input type="checkbox" id="agree">
+        <span>登録内容（LINEの表示名・アイコン・本名など）は幹事だけが見て、同窓会の名簿管理と連絡にのみ使います。同意して登録します。</span>
+      </label>
+      <button type="submit" id="submitBtn">登録する</button>
+      <div class="error" id="formError"></div>
+    </section>
+  </form>
+
+  <!-- 完了 -->
+  <section id="done" class="card center done hidden">
+    <h2>登録できました</h2>
+    <p>ご協力ありがとうございました。<br>内容を直したいときは、同じリンクをもう一度開いてください。</p>
+    <button type="button" id="closeBtn">閉じる</button>
+  </section>
+</main>
+
+<script>
+/* ==== 設定（ここを書き換えます） ==================================== */
+const LIFF_ID = "ここにLIFF IDを貼る";            // 例: 2001234567-AbCdEfGh
+const GAS_URL = "ここにGASのウェブアプリURLを貼る"; // 例: https://script.google.com/macros/s/xxxx/exec
+/* ==================================================================== */
+
+const $ = (id) => document.getElementById(id);
+const FIELDS = ["realName", "kana", "oldName", "classRoom", "message"];
+const REQUIRED = { realName: "お名前", kana: "ふりがな" };
+
+function show(id) {
+  ["loading", "fatal", "form", "done"].forEach((s) => $(s).classList.toggle("hidden", s !== id));
+}
+function fatal(msg) {
+  $("fatalText").textContent = msg;
+  show("fatal");
+}
+
+// IDトークンが期限切れなら、ログインし直す
+function tokenIsFresh() {
+  const t = liff.getDecodedIDToken();
+  return t && t.exp * 1000 > Date.now() + 60 * 1000;
+}
+
+async function callGas(payload) {
+  const res = await fetch(GAS_URL, {
+    method: "POST",
+    // text/plain にすると事前確認（CORS preflight）が起きず、GASにそのまま届く
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "送信に失敗しました");
+  return data;
+}
+
+async function main() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+  } catch (e) {
+    return fatal("初期化に失敗しました。\nLINEアプリからリンクを開き直してください。\n(" + e.message + ")");
+  }
+
+  if (!liff.isLoggedIn() || !tokenIsFresh()) {
+    if (liff.isLoggedIn()) liff.logout();
+    liff.login({ redirectUri: location.href });
+    return;
+  }
+
+  let profile;
+  try {
+    profile = await liff.getProfile();
+  } catch (e) {
+    return fatal("LINEのプロフィールを取得できませんでした。\n(" + e.message + ")");
+  }
+  $("myName").textContent = profile.displayName;
+  if (profile.pictureUrl) $("myIcon").src = profile.pictureUrl;
+
+  // 登録済みなら、前回の内容を入れておく
+  $("loadingText").textContent = "登録状況を確認しています…";
+  try {
+    const data = await callGas({ action: "load", idToken: liff.getIDToken() });
+    if (data.record) {
+      FIELDS.forEach((f) => { if (data.record[f] != null) $(f).value = data.record[f]; });
+      $("statusNotice").textContent = "すでに登録済みです。内容を直して「登録する」を押すと上書きされます。";
+      $("submitBtn").textContent = "内容を更新する";
+    }
+  } catch (e) {
+    // 確認に失敗しても登録はできるので、そのまま進める
+    console.warn(e);
+  }
+  show("form");
+}
+
+$("form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("formError").textContent = "";
+
+  const values = {};
+  FIELDS.forEach((f) => (values[f] = $(f).value.trim()));
+
+  const missing = Object.keys(REQUIRED).filter((f) => !values[f]);
+  if (missing.length) {
+    $("formError").textContent = missing.map((f) => REQUIRED[f]).join("・") + "を入力してください。";
+    $(missing[0]).focus();
+    return;
+  }
+  if (!$("agree").checked) {
+    $("formError").textContent = "同意のチェックを入れてください。";
+    return;
+  }
+  if (!tokenIsFresh()) {
+    $("formError").textContent = "時間が経ったためログインし直します。入力内容は消えるので、もう一度入力してください。";
+    setTimeout(() => { liff.logout(); liff.login({ redirectUri: location.href }); }, 2000);
+    return;
+  }
+
+  const btn = $("submitBtn");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "送信中…";
+  try {
+    await callGas({ action: "save", idToken: liff.getIDToken(), fields: values });
+    show("done");
+  } catch (e) {
+    $("formError").textContent = "登録できませんでした。時間をおいてもう一度お試しください。\n(" + e.message + ")";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+$("closeBtn").addEventListener("click", () => {
+  if (liff.isInClient()) liff.closeWindow();
+  else window.close();
+});
+
+main();
+</script>
+</body>
+</html>
